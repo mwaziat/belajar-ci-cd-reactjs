@@ -1,0 +1,68 @@
+# This workflow will do a clean installation of node dependencies, cache/restore them, build the source code and run tests across different versions of node
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-nodejs
+
+name: develop environment CI CD
+
+on: 
+  pull_request:
+    branches: 
+    - develop
+env:
+  IMAGE_NAME: liburanterus-admin-react
+  DOCKER_REPOSITORY: ${{ secrets.DOCKER_USERNAME }}
+  TAG: ${{ github.run_number }}
+  ENVIRONMENT: dev
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [16.x]
+        # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+    - name: Install dependencies
+      run: npm install
+
+    - name: Run linting and unit tests
+      run: npm test
+
+    - name: Build React app
+      run: npm run build
+  
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: docker/build-push-action@v2
+
+    - name: Build Docker image
+      run: docker build . --file Dockerfile -tags $DOCKER_REPOSITORY/$IMAGE_NAME:$ENVIRONMENT-$TAG .
+
+    - name: Login to Docker Hub
+      run: |
+        echo "${{ secrets.DOCKER_REPOSITORY_PASSWORD }}" | docker login -u $DOCKER_REPOSITORY --password-stdin
+  
+    - name: Push Image to Docker Hub
+      run:
+        docker push $DOCKER_REPOSITORY/$IMAGE_NAME:$ENVIRONMENT-$TAG
+
+    # - name: Push image to Docker registry
+    #   run: |
+    #     echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+    #     docker tag react-app:latest ${{ secrets.DOCKER_USERNAME }}/react-app:latest
+    #     docker push ${{ secrets.DOCKER_USERNAME }}/react-app:latest
+        
+    - name: Deploy with Docker Compose
+      run: |
+        docker-compose down
+        docker-compose up -d

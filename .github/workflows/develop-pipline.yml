@@ -12,7 +12,9 @@ env:
   DOCKER_REPOSITORY: ${{ secrets.DOCKER_USERNAME }}
   TAG: ${{ github.run_number }}
   ENVIRONMENT: dev
-
+  DOCKER_USERNAME: ${{secrets.DOCKER_USERNAME}}
+  DOCKER_PASSWORD: ${{secrets.DOCKER_PASSWORD}}
+  
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -51,11 +53,10 @@ jobs:
 
     - name: Login to Docker Hub
       run: |
-        echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u $DOCKER_USERNAME --password-stdin
+        echo ${DOCKER_PASSWORD} | docker login -u ${DOCKER_USERNAME} --password-stdin
   
     - name: Push Image to Docker Hub
-      run:
-        docker push $DOCKER_REPOSITORY/$IMAGE_NAME:$ENVIRONMENT-$TAG
+      run: docker push $DOCKER_REPOSITORY/$IMAGE_NAME:$ENVIRONMENT-$TAG
 
     # - name: Push image to Docker registry
     #   run: |
